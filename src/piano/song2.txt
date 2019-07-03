@@ -1,0 +1,31 @@
+[id] [id] [id] [id] [id] [is] [is] [is] [is] [is] [yp] [yp] [yp] [yp] [yp] [to] [to] [to] [to] [to] [id] [id] [id] [id] [id] [is] [is] [is] [is] [is] [yp] [yp] [yp] [yp] [yp]
+u u u i o i
+[yp] [yp] [yp] o i i y
+[tp] [tp] [tp] [is] [is] d
+o o o i i u
+[uo] [uo] [uo] [uo] [yp] p o p o o i i y
+i o i [yp] [yp] [yp] o i y [tu] [tu] i o i
+[yp] [yp] [yp] o i i y
+[ty] [ty] [ty] [is] [is] d
+o o o i i u
+P P P P
+p p o p o o i i y
+i o i p p p o i
+f f s f s f s s s
+g g g g g
+d s s s s
+s g g g g g g
+d s P P P P
+p p P P P p p p p p o o
+i o o i i
+s s g g g g g d
+s s s s g s s
+s s s g s s
+P P P P p p P P P p
+p p p p p o o
+i o o i i
+p P s s p f f d p o i
+p P s P s S p p f f d d
+p o i i o i
+p p p o i i y
+p p p o i i y

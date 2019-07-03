@@ -80,13 +80,13 @@ public class Piano extends Pane {
 
     public void sendMousePressKey(MouseEvent me, KeyReceiver receiver) {
         for (PianoKey key : blackKeys) {
-            if (key.getKeyRect().contains(me.getX(), me.getY())) {
+            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 25)) {
                 receiver.addKey(key);
                 return;
             }
         }
         for (PianoKey key : whiteKeys) {
-            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y)) {
+            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 25)) {
                 receiver.addKey(key);
                 return;
             }
@@ -128,7 +128,7 @@ public class Piano extends Pane {
 
         //drawing coordinates init
         int xWhiteStep = width / NUM_OF_WHITE_KEYS;
-        int xBlackStepSmall = xWhiteStep, xBlackStepLarge = xWhiteStep * 2;
+        int xBlackStepLarge = xWhiteStep * 2;
         int blackWidth = xWhiteStep / 2, blackHeight = (int)((2. / 3) * height);
         int xBlack = (int)((3. / 4) * xWhiteStep), xWhite = 0;
 
@@ -148,7 +148,7 @@ public class Piano extends Pane {
                     xBlack += xBlackStepLarge;
                 }
                 else {
-                    xBlack += xBlackStepSmall;
+                    xBlack += xWhiteStep;
                 }
             }
             else {
@@ -161,9 +161,5 @@ public class Piano extends Pane {
                 xWhite += xWhiteStep;
             }
         }
-        //receiver = new ReceivedNoteHandler(this);
-        /*Rectangle rect = whiteKeys.get(10).keyRect;
-        gcWhite.setFill(Color.RED);
-        gcWhite.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());*/
     }
 }

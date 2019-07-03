@@ -2,26 +2,29 @@ package piano;
 
 import exceptions.FileException;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import javax.sound.midi.MidiUnavailableException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 
 public class Main extends Application {
+    private final static int SCREEENWIDTH = 1024, SCREENHEIGHT = 640;
     private final static int cap = 60;
     private Stage window;
-    private LoadingScene loadingScene;
+    private LoadingThread loadingThread;
     private KeyToMidiAndNoteMap map;
-    private Scene mainScene;
+    private Scene mainScene, loadingScene;
     private MenuBar menuBar = new MenuBar();
     private Piano piano;
     private CompositionViewer compViewer;
@@ -34,35 +37,44 @@ public class Main extends Application {
             window = primaryStage;
             window.setTitle("Homemade Piano");
 
-            LoadingScene.initializeLoadingPane();
+            initializeLoadingScene();
             map = new KeyToMidiAndNoteMap("src/piano/map.csv", cap);
-            loadingScene = new LoadingScene(1024, 640);
+            window.setResizable(false);
+            loadingScene.setOnKeyPressed(ke -> {
+                if (ke.getCode() == KeyCode.ENTER && loadingThread.finished()) {
+                    window.setScene(mainScene);
+                    Composition comp = new Composition(map);
+                    try {
+                        comp.loadFromFile("src/piano/song2.txt");
+                        comp.exportToTXT("src/piano/out.txt");
+                        comp.exportToMIDI("src/piano/outmidi.mid");
+                    } catch (IOException | FileException fe) {
+                        fe.printStackTrace();
+                    }
+                    compViewer.setComposition(comp);
+
+                    mainScene.setOnKeyPressed(e -> piano.keyPressed(e));
+                    mainScene.setOnKeyReleased(e -> piano.keyReleased(e));
+                    mainScene.setOnMousePressed(me -> piano.mousePressed(me));
+                    mainScene.setOnMouseReleased(me -> piano.mouseReleased(me));
+                    window.show();
+
+                    window.setOnCloseRequest(e -> {
+                        handler.stopWorking();
+                        pressedReceiver.stopWorking();
+                        releasedReceiver.stopWorking();
+                    });
+                }
+            });
             window.setScene(loadingScene);
             window.show();
+            loadingThread.start();
             map.start();
-            window.setResizable(false);
+
             mainScene = initializeMainScene();
             map.join();
             if (map.errorOccurred())
                 throw new FileException("Incorrect format for input map file");
-
-            loadingScene.join();
-            window.setScene(mainScene);
-            Composition comp = new Composition(map);
-            comp.loadFromFile("src/piano/song.txt");
-            compViewer.setComposition(comp);
-
-            mainScene.setOnKeyPressed(ke -> piano.keyPressed(ke));
-            mainScene.setOnKeyReleased(ke -> piano.keyReleased(ke));
-            mainScene.setOnMousePressed(me -> piano.mousePressed(me));
-            mainScene.setOnMouseReleased(me -> piano.mouseReleased(me));
-            window.show();
-
-            window.setOnCloseRequest(e -> {
-                handler.stopWorking();
-                pressedReceiver.stopWorking();
-                releasedReceiver.stopWorking();
-            });
 
 
         } catch(FileException fe) {
@@ -71,6 +83,37 @@ public class Main extends Application {
             ie.printStackTrace();
         }
 
+    }
+
+    private void initializeLoadingScene() throws FileException {
+        Image image;
+        try {
+            image = new Image(new FileInputStream("src/piano/HoP_Header.png"));
+        } catch (FileNotFoundException e) {
+            throw new FileException("HoP_Header.png not found.");
+        }
+        VBox pane = new VBox();
+        AnchorPane anchor = new AnchorPane();
+        ImageView imageView = new ImageView(image);
+        ProgressBar ind = new ProgressBar(0);
+        Label enterTextLabel = new Label("PRESS ENTER TO CONTINUE");
+        enterTextLabel.setStyle("-fx-background-color: #FFFFFF");
+        enterTextLabel.setStyle("-fx-font-size: 24");
+        enterTextLabel.setLayoutX(361);
+        enterTextLabel.setLayoutY(432);
+        enterTextLabel.setVisible(false);
+        imageView.setLayoutX(121);
+        imageView.setLayoutY(98);
+        imageView.setFitWidth(782);
+        imageView.setFitHeight(235);
+        ind.setLayoutX(155);
+        ind.setLayoutY(431);
+        ind.setPrefSize(700, 30);
+        anchor.getChildren().addAll(imageView, ind, enterTextLabel);
+        pane.setStyle("-fx-background-color: #FFFFFF");
+        pane.getChildren().addAll(anchor);
+        loadingScene = new Scene(pane, SCREEENWIDTH, SCREENHEIGHT);
+        loadingThread = new LoadingThread(ind, enterTextLabel);
     }
 
     private void initializeMenuBar() {
@@ -110,7 +153,7 @@ public class Main extends Application {
         mainPane.setCenter(center);
         mainPane.setBottom(new Button("Hello m8"));
 
-        return new Scene(mainPane, 1024, 640);
+        return new Scene(mainPane, SCREEENWIDTH, SCREENHEIGHT);
     }
 
     public static void main(String[] args) {

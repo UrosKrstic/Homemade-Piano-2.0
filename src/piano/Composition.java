@@ -1,14 +1,20 @@
 package piano;
 
+import com.leff.midi.MidiFile;
+import com.leff.midi.MidiTrack;
+import com.leff.midi.event.meta.Tempo;
+import com.leff.midi.event.meta.TimeSignature;
 import exceptions.FileException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+
+
 
 public class Composition {
     private ArrayList<MusicSymbol> symbols;
@@ -106,9 +112,93 @@ public class Composition {
                 }
             }
         }
-        //System.out.println("Done parsing.");
     }
 
-    public void exportToTXT(String path) {}
-    public void exportToMIDI(String path) {}
+    public void exportToTXT(String path) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+        boolean firstEight = true;
+        for (int i = 0; i < symbols.size(); i++) {
+            MusicSymbol symbol = symbols.get(i);
+            if (symbol instanceof Pause) {
+                Pause pause = (Pause) symbol;
+                if (pause.getDuration() == 1) {
+                    writer.write(" ");
+                }
+                else {
+                    writer.write("|");
+                }
+            }
+            if (symbol instanceof Chord) {
+                writer.write("[");
+                Chord chord = (Chord) symbol;
+                for (Note note : chord.getNotes()) {
+                    writer.write(Character.toString(note.getTextCode()));
+                }
+                writer.write("]");
+            }
+            if (symbol instanceof Note) {
+                Note note = (Note) symbol;
+                if (note.getDuration() == 2) {
+                    writer.write(Character.toString(note.getTextCode()));
+                }
+                else {
+                    if (firstEight) {
+                        writer.write("[" + Character.toString(note.getTextCode()));
+                        firstEight = false;
+                    }
+                    else {
+                        writer.write(Character.toString(note.getTextCode()));
+                    }
+                    boolean isLast = true;
+                    for (int j = i + 1; j < symbols.size(); j++) {
+                        if (symbols.get(j) instanceof Chord || (symbols.get(j) instanceof Note && symbols.get(j).getDuration() == 2))
+                            break;
+                        else if (symbols.get(j) instanceof Note && symbols.get(j).getDuration() == 1)
+                            isLast = false;
+                    }
+                    if (isLast) {
+                        writer.write("]");
+                        firstEight = true;
+                    }
+                }
+            }
+        }
+        writer.close();
+    }
+    public void exportToMIDI(String path) throws IOException {
+        MidiTrack tempoTrack = new MidiTrack();
+        MidiTrack noteTrack = new MidiTrack();
+
+        TimeSignature ts = new TimeSignature();
+        ts.setTimeSignature(8, 8, TimeSignature.DEFAULT_METER, TimeSignature.DEFAULT_DIVISION);
+
+        Tempo tempo = new Tempo();
+        tempo.setBpm(200);
+        tempoTrack.insertEvent(ts);
+        tempoTrack.insertEvent(tempo);
+
+        int channel = 0, velocity = 100, duration = 60;
+        for (int i = 0; i < symbols.size(); i++) {
+            MusicSymbol symbol = symbols.get(i);
+            long tick = i * 480;
+            if (symbol instanceof Note) {
+                Note note = (Note)symbol;
+                noteTrack.insertNote(channel, note.getMIDIcode(), velocity, tick, duration * note.getDuration());
+            }
+            else if (symbol instanceof Chord) {
+                ArrayList<Note> notes = ((Chord) symbol).getNotes();
+                for (Note note : notes) {
+                    noteTrack.insertNote(channel, note.getMIDIcode(), velocity, tick, duration * 2);
+                }
+            }
+        }
+        //inivisible ghost note that does the job xd rofl kek lmfao kms
+        noteTrack.insertNote(channel, 1, velocity, 480 * symbols.size(), duration);
+        List<MidiTrack> tracks = new ArrayList<>();
+        tracks.add(tempoTrack);
+        tracks.add(noteTrack);
+        MidiFile midi = new MidiFile(MidiFile.DEFAULT_RESOLUTION, tracks);
+        File output = new File(path);
+        midi.writeToFile(output);
+    }
 }
