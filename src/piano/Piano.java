@@ -5,6 +5,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -18,11 +19,17 @@ public class Piano extends Pane {
     private static final int NUM_OF_WHITE_KEYS = 35, NUM_OF_BLACK_KEYS = 25;
     private final static char[] lowercaseMapForNumbers = {'!', '@', '#', '$', '%', '^', '&', '*', '(', ')'};
 
-    private ReceivedNoteHandler receiver;
+    private ReceivedNoteHandler handler;
     private boolean helperON = true;
-    private int i = 0;
+    private int i = 0, x, y;
     private Canvas blackKeysFront, whiteKeysBack;
+    private KeyReceiver pressedReceiver, releasedReceiver;
     private ArrayList<PianoKey> blackKeys = new ArrayList<>(NUM_OF_BLACK_KEYS), whiteKeys = new ArrayList<>(NUM_OF_WHITE_KEYS);
+
+    public void setHandler(ReceivedNoteHandler _handler) { handler = _handler; }
+
+    public void setPressedReceiver(KeyReceiver _receiver) { pressedReceiver = _receiver; }
+    public void setReleasedReceiver(KeyReceiver _receiver) { releasedReceiver = _receiver; }
 
     public Canvas getBlackKeysFront() {
         return blackKeysFront;
@@ -47,40 +54,56 @@ public class Piano extends Pane {
         return clickedChar;
     }
 
-    public void keyPressed(KeyEvent ke) {
-       if (ke.isShiftDown()) {
-           for (PianoKey key : blackKeys) {
-               char clickedChar = getClickedChar(ke);
-               if (key.getNote().getTextCode() == clickedChar)
-                   receiver.addPressedKey(key);
-           }
-       }
-       else {
-           for (PianoKey key : whiteKeys) {
-               if (key.getNote().getTextCode() == Character.toLowerCase(ke.getCode().getCode()))
-                   receiver.addPressedKey(key);
-           }
-       }
-    }
-
-    public void keyReleased(KeyEvent ke) {
+    private void sendKey(KeyEvent ke, KeyReceiver receiver) {
         if (ke.isShiftDown()) {
             for (PianoKey key : blackKeys) {
                 char clickedChar = getClickedChar(ke);
                 if (key.getNote().getTextCode() == clickedChar)
-                    receiver.addReleasedKey(key);
+                    receiver.addKey(key);
             }
         }
         else {
             for (PianoKey key : whiteKeys) {
                 if (key.getNote().getTextCode() == Character.toLowerCase(ke.getCode().getCode()))
-                    receiver.addReleasedKey(key);
+                    receiver.addKey(key);
             }
         }
     }
 
+    public void keyPressed(KeyEvent ke) {
+      sendKey(ke, pressedReceiver);
+    }
+
+    public void keyReleased(KeyEvent ke) {
+     sendKey(ke, releasedReceiver);
+    }
+
+    public void sendMousePressKey(MouseEvent me, KeyReceiver receiver) {
+        for (PianoKey key : blackKeys) {
+            if (key.getKeyRect().contains(me.getX(), me.getY())) {
+                receiver.addKey(key);
+                return;
+            }
+        }
+        for (PianoKey key : whiteKeys) {
+            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y)) {
+                receiver.addKey(key);
+                return;
+            }
+        }
+    }
+
+    public void mousePressed(MouseEvent me) {
+        sendMousePressKey(me, pressedReceiver);
+    }
+    public void mouseReleased(MouseEvent me) {
+        sendMousePressKey(me, releasedReceiver);
+    }
+
 
     public Piano(KeyToMidiAndNoteMap mappingObj, int x, int y, int width, int height) throws MidiUnavailableException {
+        this.x = x;
+        this.y = y;
         //pane repositioning
         setLayoutX(x);
         setLayoutY(y);
@@ -138,7 +161,7 @@ public class Piano extends Pane {
                 xWhite += xWhiteStep;
             }
         }
-        receiver = new ReceivedNoteHandler(this);
+        //receiver = new ReceivedNoteHandler(this);
         /*Rectangle rect = whiteKeys.get(10).keyRect;
         gcWhite.setFill(Color.RED);
         gcWhite.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());*/
