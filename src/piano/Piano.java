@@ -39,6 +39,14 @@ public class Piano extends Pane {
         return whiteKeysBack;
     }
 
+    public ArrayList<PianoKey> getBlackKeys() {
+        return blackKeys;
+    }
+
+    public ArrayList<PianoKey> getWhiteKeys() {
+        return whiteKeys;
+    }
+
     private char getClickedChar(KeyEvent ke) {
         char clickedChar;
         if (ke.getCode().isDigitKey()) {
@@ -96,12 +104,12 @@ public class Piano extends Pane {
     public void mousePressed(MouseEvent me) {
         sendMousePressKey(me, pressedReceiver);
     }
+
     public void mouseReleased(MouseEvent me) {
         sendMousePressKey(me, releasedReceiver);
     }
 
-
-    public Piano(KeyToMidiAndNoteMap mappingObj, int x, int y, int width, int height) throws MidiUnavailableException {
+    public Piano(KeyToMidiAndNoteMap mappingObj, int x, int y, int width, int height) {
         this.x = x;
         this.y = y;
         //pane repositioning

@@ -7,7 +7,7 @@ public class KeyReceiver extends Thread {
     private final static int BACKOFF_TIME = 40;
     private ReceivedNoteHandler handler;
     private ArrayList<PianoKey> receivedKeys = new ArrayList<>();
-    private boolean working = true;
+    private boolean working = true, blocked = false;
     private boolean forPressed;
 
     public KeyReceiver(ReceivedNoteHandler handler, boolean forPressed) {
@@ -25,12 +25,16 @@ public class KeyReceiver extends Thread {
         notifyAll();
     }
 
-    public synchronized void stopWorking() { working = false; }
+    public synchronized void stopWorking() { interrupt(); }
+
+    public synchronized void blockReceiver() { blocked = true; }
+    public synchronized void unblockReceiver() { blocked = false; notifyAll();}
 
     public void run() {
-        while(working) {
+        while(interrupted()) {
             try {
                 synchronized (this) { while(receivedKeys.size() == 0) wait(); }
+                synchronized (this) { while(blocked) wait(); }
                 sleep(BACKOFF_TIME);
                 ArrayList<PianoKey> tmpKeys = receivedKeys;
                 receivedKeys = new ArrayList<>();
@@ -41,9 +45,7 @@ public class KeyReceiver extends Thread {
                     handler.addReleasedKey(tmpKeys);
                 }
             }
-            catch(InterruptedException ie) {
-                ie.printStackTrace();
-            }
+            catch(InterruptedException ie) {interrupt();}
         }
     }
 

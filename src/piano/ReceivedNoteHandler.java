@@ -33,7 +33,7 @@ public class ReceivedNoteHandler extends Thread {
     private Stage window;
     private MidiChannel channel;
     private Piano piano;
-    private boolean isRecording = false, isFirstNote = true, working = true, playingPause;
+    private boolean isRecording = false, isFirstNote = true, working = true, playingPause, blocked = false;
     private CompositionViewer compViewer;
     private ConcurrentLinkedQueue<ArrayList<PianoKey>> pressedKeys = new ConcurrentLinkedQueue<>();
     private ConcurrentLinkedQueue<ArrayList<PianoKey>> releasedKeys = new ConcurrentLinkedQueue<>();
@@ -178,7 +178,44 @@ public class ReceivedNoteHandler extends Thread {
         }
     }
 
-    private void unhighlightKeys(ArrayList<PianoKey> keys) {
+    public ArrayList<PianoKey> locatePianoKeys(ArrayList<Note> notes) {
+        ArrayList<PianoKey> keys = new ArrayList<>();
+        ArrayList<PianoKey> pianoCheckUpKeys = piano.getBlackKeys();
+        pianoCheckUpKeys.addAll(piano.getWhiteKeys());
+        for (Note note : notes) {
+            for (PianoKey key : pianoCheckUpKeys) {
+                if (note.getTextCode() == key.getNote().getTextCode()) {
+                    keys.add(key);
+                    break;
+                }
+            }
+        }
+        return keys;
+    }
+
+    public void highlightKeys(ArrayList<PianoKey> keys) {
+        for (PianoKey key : keys) {
+            Rectangle rect = key.getKeyRect();
+            if (key.getNote().isSharp()) {
+                GraphicsContext gc = piano.getBlackKeysFront().getGraphicsContext2D();
+                gc.setFill(Color.RED);
+                gc.setStroke(Color.WHITE);
+                gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
+                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.24), (int)(0.78 * rect.getHeight()));
+            }
+            else {
+                GraphicsContext gc = piano.getWhiteKeysBack().getGraphicsContext2D();
+                gc.setFill(Color.RED);
+                gc.setStroke(Color.WHITE);
+                gc.setLineWidth(1.5);
+                gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
+                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
+            }
+            play(key.getNote().getMIDIcode());
+        }
+    }
+
+    public void unhighlightKeys(ArrayList<PianoKey> keys) {
         for (PianoKey key : keys) {
             Rectangle rect = key.getKeyRect();
             if (key.getNote().isSharp()) {
@@ -191,14 +228,17 @@ public class ReceivedNoteHandler extends Thread {
                 GraphicsContext gc = piano.getWhiteKeysBack().getGraphicsContext2D();
                 gc.setFill(Color.WHITE);
                 gc.setStroke(Color.BLACK);
-                gc.setLineWidth(1.5);
                 gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
+                gc.setLineWidth(1.5);
                 gc.strokeRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
                 gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
             }
             release(key.getNote().getMIDIcode());
         }
     }
+
+    public synchronized void blockHandler() { blocked = true; }
+    public synchronized void unblockHandler() { blocked = false; notifyAll();}
 
     public void run() {
         while (working) {
@@ -207,17 +247,22 @@ public class ReceivedNoteHandler extends Thread {
                catch (InterruptedException ie) {}
                 isFirstNote = false;
             }
+            //added for blocking
+            if (blocked) {
+                try {
+                    synchronized (this) {
+                        while (blocked) wait();
+                    }
+                } catch (InterruptedException ie) {}
+                pressedKeys.clear();
+                releasedKeys.clear();
+                continue;
+            }
+
             ArrayList<PianoKey> keys = pressedKeys.poll();
             playingPause = keys == null || keys.size() == 0;
             if (!playingPause) {
-                for (PianoKey key : keys) {
-                    Rectangle rect = key.getKeyRect();
-                    GraphicsContext gc = key.getNote().isSharp() ?
-                            piano.getBlackKeysFront().getGraphicsContext2D() : piano.getWhiteKeysBack().getGraphicsContext2D();
-                    gc.setFill(Color.RED);
-                    gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-                    play(key.getNote().getMIDIcode());
-                }
+               highlightKeys(keys);
             }
             boolean isQuarterNote = true;
             try {
@@ -301,5 +346,9 @@ public class ReceivedNoteHandler extends Thread {
         Synthesizer synthesizer = MidiSystem.getSynthesizer();
         synthesizer.open();
         return synthesizer.getChannels()[instrument];
+    }
+    public static void closeSynth() throws MidiUnavailableException {
+        Synthesizer synthesizer = MidiSystem.getSynthesizer();
+        synthesizer.close();
     }
 }

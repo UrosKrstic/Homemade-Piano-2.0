@@ -31,13 +31,24 @@ public class Main extends Application {
     private FileChooser fileChooser = new FileChooser();
     private Piano piano;
     private CompositionViewer compViewer;
+    private AutoPlayer autoPlayer;
     private ReceivedNoteHandler handler;
     private KeyReceiver pressedReceiver, releasedReceiver;
+    private boolean isAutoPlaying = false;
+    private MenuItem record = new MenuItem("Record"), play = new MenuItem("Play");
+    private MenuItem pause = new MenuItem("Pause"), stop = new MenuItem("Stop");
 
     private void shutdownProgram() {
         handler.stopWorking();
+        try {
+            ReceivedNoteHandler.closeSynth();
+        }
+        catch(MidiUnavailableException me) {
+            AlertBox.display("Error", "Failed to get synthesizer and close the MIDI subsystem.");
+        }
         pressedReceiver.stopWorking();
         releasedReceiver.stopWorking();
+        autoPlayer.stopWorking();
         window.close();
     }
 
@@ -46,6 +57,27 @@ public class Main extends Application {
         if (answer) {
             shutdownProgram();
         }
+    }
+
+    private void blockInput() {
+        pressedReceiver.blockReceiver();
+        releasedReceiver.blockReceiver();
+        handler.blockHandler();
+    }
+
+    private void unblockInput() {
+        pressedReceiver.unblockReceiver();
+        releasedReceiver.unblockReceiver();
+        handler.unblockHandler();
+    }
+
+    public void stopAutoPlaying() {
+        isAutoPlaying = false;
+        unblockInput();
+        record.setDisable(false);
+        play.setDisable(false);
+        pause.setDisable(true);
+        stop.setDisable(true);
     }
 
     @Override
@@ -125,7 +157,8 @@ public class Main extends Application {
             File selectedFile = fileChooser.showOpenDialog(window);
             Composition comp = new Composition(map);
             try {
-                comp.loadFromFile(selectedFile.toString());
+                if (selectedFile != null)
+                    comp.loadFromFile(selectedFile.toString());
                 //comp.exportToTXT("src/piano/out.txt");
                 //comp.exportToMIDI("src/piano/outmidi.mid");
             } catch (IOException fe) {
@@ -138,7 +171,6 @@ public class Main extends Application {
         });
         MenuItem exitProgram = new MenuItem("Exit...");
         exitProgram.setOnAction(e -> {
-            e.consume();
             questioningShutdown();
         });
         fileMenu.getItems().add(openFile);
@@ -146,16 +178,47 @@ public class Main extends Application {
         fileMenu.getItems().add(exitProgram);
 
         Menu editMenu = new Menu("Edit");
-        MenuItem record = new MenuItem("Record");
-        record.setOnAction(e -> handler.startRecording());
-        MenuItem play = new MenuItem("Play");
-        MenuItem pause = new MenuItem("Pause");
-        pause.setOnAction(e -> {
-            handler.pauseRecording();
+        record.setOnAction(e -> {
+            record.setDisable(true);
+            pause.setDisable(false);
+            stop.setDisable(false);
+            play.setDisable(true);
+            handler.startRecording();
         });
-        MenuItem stop = new MenuItem("Stop");
+        play.setOnAction(e -> {
+            blockInput();
+            record.setDisable(true);
+            play.setDisable(false);
+            pause.setDisable(false);
+            stop.setDisable(false);
+            isAutoPlaying = true;
+            autoPlayer.startPlaying();
+        });
+
+        pause.setDisable(true);
+        pause.setOnAction(e -> {
+            if (isAutoPlaying) {
+                autoPlayer.stopPlaying();
+            }
+            else {
+                handler.pauseRecording();
+            }
+        });
+
+        stop.setDisable(true);
         stop.setOnAction(e -> {
-            handler.stopRecording();
+            if (isAutoPlaying) {
+                autoPlayer.stopPlaying();
+                isAutoPlaying = false;
+                unblockInput();
+            }
+            else {
+                handler.stopRecording();
+            }
+            record.setDisable(false);
+            play.setDisable(false);
+            pause.setDisable(true);
+            stop.setDisable(true);
         });
         editMenu.getItems().addAll(record, play, pause, stop);
 
@@ -185,6 +248,7 @@ public class Main extends Application {
         piano.setHandler(handler);
         piano.setPressedReceiver(pressedReceiver);
         piano.setReleasedReceiver(releasedReceiver);
+        autoPlayer = new AutoPlayer(compViewer, handler, this);
         center.getChildren().addAll(compViewer, piano);
         mainPane.setCenter(center);
         mainPane.setBottom(new Button("Hello m8"));

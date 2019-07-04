@@ -76,6 +76,10 @@ public class CompositionViewer extends Pane {
         if (currentSymbolIndex == 0) reachedEnd = true;
     }
 
+    public int getCurrentSymbolIndex() { return currentSymbolIndex; }
+
+    public MusicSymbol getCurrentSymbol() { return comp.getMusicSymbols().get(currentSymbolIndex); }
+
     public void setCodeShown(boolean b) { codeShown = b; }
 
     public boolean reachedEnd() { return reachedEnd; }
@@ -91,7 +95,7 @@ public class CompositionViewer extends Pane {
             GraphicsContext gc = fg.getGraphicsContext2D();
             gc.setFill(Color.WHITE);
             gc.fillRect(0, 0, width, (int)((5./6) * height));
-            for (int i = 0; i < NUM_OF_EIGHTS;) {
+            for (int i = 0; i <= NUM_OF_EIGHTS;) {
                 if (k < symbols.size()) {
                     MusicSymbol symbol = symbols.get(k);
                     if (symbol.getDuration() == 1) {
