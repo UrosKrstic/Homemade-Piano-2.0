@@ -10,9 +10,11 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javax.sound.midi.MidiUnavailableException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -26,43 +28,45 @@ public class Main extends Application {
     private KeyToMidiAndNoteMap map;
     private Scene mainScene, loadingScene;
     private MenuBar menuBar = new MenuBar();
+    private FileChooser fileChooser = new FileChooser();
     private Piano piano;
     private CompositionViewer compViewer;
     private ReceivedNoteHandler handler;
     private KeyReceiver pressedReceiver, releasedReceiver;
+
+    private void shutdownProgram() {
+        handler.stopWorking();
+        pressedReceiver.stopWorking();
+        releasedReceiver.stopWorking();
+        window.close();
+    }
+
+    private void questioningShutdown() {
+        boolean answer = ConfirmBox.display("Don't leave me :(", "Do you wish to exit?");
+        if (answer) {
+            shutdownProgram();
+        }
+    }
 
     @Override
     public void start(Stage primaryStage) throws Exception{
         try {
             window = primaryStage;
             window.setTitle("Homemade Piano");
-
             initializeLoadingScene();
             map = new KeyToMidiAndNoteMap("src/piano/map.csv", cap);
             window.setResizable(false);
             loadingScene.setOnKeyPressed(ke -> {
                 if (ke.getCode() == KeyCode.ENTER && loadingThread.finished()) {
                     window.setScene(mainScene);
-                    Composition comp = new Composition(map);
-                    try {
-                        comp.loadFromFile("src/piano/song2.txt");
-                        comp.exportToTXT("src/piano/out.txt");
-                        comp.exportToMIDI("src/piano/outmidi.mid");
-                    } catch (IOException | FileException fe) {
-                        fe.printStackTrace();
-                    }
-                    compViewer.setComposition(comp);
-
                     mainScene.setOnKeyPressed(e -> piano.keyPressed(e));
                     mainScene.setOnKeyReleased(e -> piano.keyReleased(e));
                     mainScene.setOnMousePressed(me -> piano.mousePressed(me));
                     mainScene.setOnMouseReleased(me -> piano.mouseReleased(me));
                     window.show();
-
                     window.setOnCloseRequest(e -> {
-                        handler.stopWorking();
-                        pressedReceiver.stopWorking();
-                        releasedReceiver.stopWorking();
+                        e.consume();
+                        questioningShutdown();
                     });
                 }
             });
@@ -70,17 +74,15 @@ public class Main extends Application {
             window.show();
             loadingThread.start();
             map.start();
-
             mainScene = initializeMainScene();
-            map.join();
             if (map.errorOccurred())
                 throw new FileException("Incorrect format for input map file");
-
-
         } catch(FileException fe) {
-            System.out.println(fe.getMessage());
-        } catch (InterruptedException | MidiUnavailableException ie) {
-            ie.printStackTrace();
+            AlertBox.display("Fatal error", fe.getMessage());
+            shutdownProgram();
+        } catch (MidiUnavailableException ie) {
+            AlertBox.display("Fatal error", "Midi Unavailable - Fatal Error");
+            shutdownProgram();
         }
 
     }
@@ -118,13 +120,44 @@ public class Main extends Application {
 
     private void initializeMenuBar() {
         Menu fileMenu = new Menu("File");
-        fileMenu.getItems().add(new MenuItem("Open..."));
-        fileMenu.getItems().add(new MenuItem("Exit..."));
+        MenuItem openFile = new MenuItem("Open File...");
+        openFile.setOnAction(e -> {
+            File selectedFile = fileChooser.showOpenDialog(window);
+            Composition comp = new Composition(map);
+            try {
+                comp.loadFromFile(selectedFile.toString());
+                //comp.exportToTXT("src/piano/out.txt");
+                //comp.exportToMIDI("src/piano/outmidi.mid");
+            } catch (IOException fe) {
+                AlertBox.display("Error", "Error with opening file" + selectedFile.toString());
+            }
+            catch (FileException fe) {
+                AlertBox.display("Error", fe.getMessage());
+            }
+            compViewer.setComposition(comp);
+        });
+        MenuItem exitProgram = new MenuItem("Exit...");
+        exitProgram.setOnAction(e -> {
+            e.consume();
+            questioningShutdown();
+        });
+        fileMenu.getItems().add(openFile);
+        fileMenu.getItems().add(new SeparatorMenuItem());
+        fileMenu.getItems().add(exitProgram);
 
         Menu editMenu = new Menu("Edit");
-        editMenu.getItems().add(new MenuItem("Record"));
-        editMenu.getItems().add(new MenuItem("Play"));
-        editMenu.getItems().add(new MenuItem("Stop"));
+        MenuItem record = new MenuItem("Record");
+        record.setOnAction(e -> handler.startRecording());
+        MenuItem play = new MenuItem("Play");
+        MenuItem pause = new MenuItem("Pause");
+        pause.setOnAction(e -> {
+            handler.pauseRecording();
+        });
+        MenuItem stop = new MenuItem("Stop");
+        stop.setOnAction(e -> {
+            handler.stopRecording();
+        });
+        editMenu.getItems().addAll(record, play, pause, stop);
 
         Menu settingsMenu = new Menu("Settings");
         Menu helpMenu = new Menu("Help");
@@ -135,7 +168,9 @@ public class Main extends Application {
     private Scene initializeMainScene() throws MidiUnavailableException {
         BorderPane mainPane = new BorderPane();
 
-        //TODO: add functionality to the menu bar
+        fileChooser.setTitle("Open File");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Text file", "*.txt"));
         initializeMenuBar();
         mainPane.setTop(menuBar);
 
@@ -144,6 +179,7 @@ public class Main extends Application {
         piano = new Piano(map, 81, 223,  882, 211);
         handler = new ReceivedNoteHandler(piano);
         handler.setCompositionViewer(compViewer);
+        handler.setWindow(window);
         pressedReceiver = new KeyReceiver(handler, true);
         releasedReceiver = new KeyReceiver(handler, false);
         piano.setHandler(handler);

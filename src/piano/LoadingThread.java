@@ -22,7 +22,7 @@ public class LoadingThread extends Thread {
                 Thread.sleep(150);
             }
         }
-        catch(InterruptedException ie) {ie.printStackTrace();}
+        catch(InterruptedException ie) {}
         finally { finished = true; ind.setVisible(false); enterLabel.setVisible(true); }
     }
 }

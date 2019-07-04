@@ -85,12 +85,14 @@ public class Composition {
                                     symbols.add(new Pause(1));
                                 }
                                 else if (submatch.group(1) != null) {
+                                    symbols.clear();
                                     throw new FileException("Incorrect file: " + path);
                                 }
                             }
                         }
                     }
                     else {
+                        symbols.clear();
                         throw new FileException("Incorrect file: " + path);
                     }
                 }
@@ -108,12 +110,12 @@ public class Composition {
                     symbols.add(new Pause(1));
                 }
                 else {
+                    symbols.clear();
                     throw new FileException("Incorrect file: " + path);
                 }
             }
         }
     }
-
     public void exportToTXT(String path) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(path));
         boolean firstEight = true;
@@ -173,7 +175,7 @@ public class Composition {
         ts.setTimeSignature(8, 8, TimeSignature.DEFAULT_METER, TimeSignature.DEFAULT_DIVISION);
 
         Tempo tempo = new Tempo();
-        tempo.setBpm(200);
+        tempo.setBpm(230);
         tempoTrack.insertEvent(ts);
         tempoTrack.insertEvent(tempo);
 
