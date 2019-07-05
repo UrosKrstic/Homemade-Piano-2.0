@@ -175,11 +175,11 @@ public class Composition {
         ts.setTimeSignature(8, 8, TimeSignature.DEFAULT_METER, TimeSignature.DEFAULT_DIVISION);
 
         Tempo tempo = new Tempo();
-        tempo.setBpm(230);
+        tempo.setBpm(275);
         tempoTrack.insertEvent(ts);
         tempoTrack.insertEvent(tempo);
 
-        int channel = 0, velocity = 100, duration = 60;
+        int channel = 0, velocity = 100, duration = 80;
         for (int i = 0; i < symbols.size(); i++) {
             MusicSymbol symbol = symbols.get(i);
             long tick = i * 480;

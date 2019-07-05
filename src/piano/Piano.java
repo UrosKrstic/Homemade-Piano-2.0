@@ -47,6 +47,13 @@ public class Piano extends Pane {
         return whiteKeys;
     }
 
+    public ArrayList<PianoKey> getAllKeys() {
+        ArrayList<PianoKey> allKeys = new ArrayList<>();
+        allKeys.addAll(blackKeys);
+        allKeys.addAll(whiteKeys);
+        return allKeys;
+    }
+
     private char getClickedChar(KeyEvent ke) {
         char clickedChar;
         if (ke.getCode().isDigitKey()) {
@@ -76,6 +83,12 @@ public class Piano extends Pane {
                     receiver.addKey(key);
             }
         }
+    }
+
+    public boolean isHelperON() { return helperON; }
+    public void setHelper(boolean b) {
+        helperON = b;
+        handler.unhighlightKeys(getAllKeys());
     }
 
     public void keyPressed(KeyEvent ke) {

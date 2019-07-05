@@ -60,6 +60,7 @@ public class ReceivedNoteHandler extends Thread {
     public void setWindow(Stage _window) { window = _window; }
 
     public synchronized void stopWorking() {
+        interrupt();
         working = false;
     }
 
@@ -69,7 +70,11 @@ public class ReceivedNoteHandler extends Thread {
 
     public synchronized void pauseRecording() { isRecording = false; }
 
-    private void fileWindow() {
+    public void setRecordingSymbols(ArrayList<MusicSymbol> symbols) {
+        recordingSymbols = symbols;
+    }
+
+    public void fileWindow() {
         Stage stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL); // BLOCKS OTHER WINDOWS USERS EVENTS
         stage.setTitle("File Export");
@@ -158,7 +163,6 @@ public class ReceivedNoteHandler extends Thread {
             if (isQuarterNote) note.setDuration(2);
             else note.setDuration(1);
             compViewer.checkCurrentSymbol(note);
-            System.out.println(note);
             if (isRecording) {
                 recordingSymbols.add(note);
             }
@@ -170,7 +174,6 @@ public class ReceivedNoteHandler extends Thread {
                 notes.add(key.getNote());
             }
             Chord chord = new Chord(notes);
-            System.out.println(chord);
             compViewer.checkCurrentSymbol(chord);
             if (isRecording) {
                 recordingSymbols.add(chord);
@@ -180,7 +183,8 @@ public class ReceivedNoteHandler extends Thread {
 
     public ArrayList<PianoKey> locatePianoKeys(ArrayList<Note> notes) {
         ArrayList<PianoKey> keys = new ArrayList<>();
-        ArrayList<PianoKey> pianoCheckUpKeys = piano.getBlackKeys();
+        ArrayList<PianoKey> pianoCheckUpKeys = new ArrayList<>();
+        pianoCheckUpKeys.addAll(piano.getBlackKeys());
         pianoCheckUpKeys.addAll(piano.getWhiteKeys());
         for (Note note : notes) {
             for (PianoKey key : pianoCheckUpKeys) {
@@ -201,7 +205,8 @@ public class ReceivedNoteHandler extends Thread {
                 gc.setFill(Color.RED);
                 gc.setStroke(Color.WHITE);
                 gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.24), (int)(0.78 * rect.getHeight()));
+                if (piano.isHelperON())
+                    gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.24), (int)(0.78 * rect.getHeight()));
             }
             else {
                 GraphicsContext gc = piano.getWhiteKeysBack().getGraphicsContext2D();
@@ -209,7 +214,8 @@ public class ReceivedNoteHandler extends Thread {
                 gc.setStroke(Color.WHITE);
                 gc.setLineWidth(1.5);
                 gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
+                if (piano.isHelperON())
+                    gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
             }
             play(key.getNote().getMIDIcode());
         }
@@ -222,7 +228,8 @@ public class ReceivedNoteHandler extends Thread {
                 GraphicsContext gc = piano.getBlackKeysFront().getGraphicsContext2D();
                 gc.setFill(Color.BLACK);
                 gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.24), (int)(0.78 * rect.getHeight()));
+                if (piano.isHelperON())
+                    gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.24), (int)(0.78 * rect.getHeight()));
             }
             else {
                 GraphicsContext gc = piano.getWhiteKeysBack().getGraphicsContext2D();
@@ -231,7 +238,8 @@ public class ReceivedNoteHandler extends Thread {
                 gc.fillRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
                 gc.setLineWidth(1.5);
                 gc.strokeRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-                gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
+                if (piano.isHelperON())
+                    gc.strokeText(key.getNote().getTextCode()+ "", (int)(rect.getX() + rect.getWidth() * 0.4), (int)(0.84 * rect.getHeight()));
             }
             release(key.getNote().getMIDIcode());
         }
@@ -258,7 +266,6 @@ public class ReceivedNoteHandler extends Thread {
                 releasedKeys.clear();
                 continue;
             }
-
             ArrayList<PianoKey> keys = pressedKeys.poll();
             playingPause = keys == null || keys.size() == 0;
             if (!playingPause) {
@@ -327,6 +334,7 @@ public class ReceivedNoteHandler extends Thread {
                 unhighlightKeys(keys);
             }
         }
+        System.out.println("Handler rip");
     }
 
     public ReceivedNoteHandler(Piano _piano) throws MidiUnavailableException {

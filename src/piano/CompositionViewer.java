@@ -18,7 +18,7 @@ public class CompositionViewer extends Pane {
     private int x, y, width, height, quarterW, bgLineHeight;
     private int startX = 3, currentSymbolIndex = 0;
     private boolean reachedEnd;
-    private boolean codeShown;
+    private boolean pitchShown;
 
     public CompositionViewer(int x, int y, int width, int height) {
         this.x = x;
@@ -40,6 +40,13 @@ public class CompositionViewer extends Pane {
        setBG();
     }
 
+    public boolean isPitchShown() { return pitchShown; }
+
+    public void showPitch(boolean b) {
+        pitchShown = b;
+        drawComp();
+    }
+
     private void setBG() {
         GraphicsContext gc = bg.getGraphicsContext2D();
         gc.setStroke(Color.BLACK);
@@ -58,8 +65,7 @@ public class CompositionViewer extends Pane {
     }
 
     public boolean checkCurrentSymbol(MusicSymbol symbol) {
-        if (comp != null) {
-            //System.out.println(comp.getMusicSymbols().get(currentSymbolIndex));
+        if (comp != null && comp.getMusicSymbols().size() > 0) {
             if (symbol.equals(comp.getMusicSymbols().get(currentSymbolIndex))) {
                 currentSymbolIndex = (currentSymbolIndex + 1) % comp.getMusicSymbols().size();
                 drawComp();
@@ -76,15 +82,13 @@ public class CompositionViewer extends Pane {
         if (currentSymbolIndex == 0) reachedEnd = true;
     }
 
-    public int getCurrentSymbolIndex() { return currentSymbolIndex; }
+    public boolean hasComposition() { return comp != null; }
 
     public MusicSymbol getCurrentSymbol() { return comp.getMusicSymbols().get(currentSymbolIndex); }
 
-    public void setCodeShown(boolean b) { codeShown = b; }
-
     public boolean reachedEnd() { return reachedEnd; }
 
-    public void resetViewer() {currentSymbolIndex = 0;}
+    public void resetViewer() {currentSymbolIndex = 0; reachedEnd = false;}
 
     public void drawComp() {
         if (comp != null) {
@@ -104,8 +108,10 @@ public class CompositionViewer extends Pane {
                             gc.setFill(Color.LIGHTGREEN);
                             gc.setStroke(Color.BLACK);
                             gc.fillRect(x, singleSymbolY, eightW, h);
-                            if (codeShown) {
-                                gc.strokeText(note.getName(), x, singleSymbolY);
+                            if (pitchShown) {
+                                double relX = 0.07;
+                                if (note.getName().length() == 2) relX = 0.14;
+                                gc.strokeText(note.getName(), x + (int) (quarterW * relX), singleSymbolY + (int)(h * 0.665));
                             }
                             else {
                                 gc.strokeText(Character.toString(note.getTextCode()), x + (int)(eightW * 0.4649), singleSymbolY + (int)(h * 0.665));
@@ -122,8 +128,10 @@ public class CompositionViewer extends Pane {
                             gc.setFill(Color.RED);
                             gc.setStroke(Color.BLACK);
                             gc.fillRect(x, singleSymbolY, quarterW, h);
-                            if (codeShown) {
-                                gc.strokeText(note.getName(), x, singleSymbolY);
+                            if (pitchShown) {
+                                double relX = 0.31;
+                                if (note.getName().length() == 2) relX = 0.4;
+                                gc.strokeText(note.getName(), x + (int) (quarterW * relX), singleSymbolY + (int)(h * 0.665));
                             }
                             else {
                                 gc.strokeText(Character.toString(note.getTextCode()), x + (int)(quarterW * 0.465), singleSymbolY + (int)(h * 0.665));
@@ -142,8 +150,15 @@ public class CompositionViewer extends Pane {
                             int y = singleSymbolY;
                             for (int j = 0; j < iter; j++) {
                                 gc.fillRect(x, y, quarterW, h);
-                                gc.strokeText(Character.toString(notes.get(j).getTextCode()), x + (int)(quarterW * 0.465),
-                                        y + (int)(h * 0.665));
+                                if (pitchShown) {
+                                    double relX = 0.31;
+                                    if (notes.get(j).getName().length() == 2) relX = 0.4;
+                                    gc.strokeText(notes.get(j).getName(), x + (int) (quarterW * relX), y + (int) (h * 0.665));
+                                }
+                                else {
+                                    gc.strokeText(Character.toString(notes.get(j).getTextCode()), x + (int) (quarterW * 0.465),
+                                            y + (int) (h * 0.665));
+                                }
                                 y -= h;
                             }
 

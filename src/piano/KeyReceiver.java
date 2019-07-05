@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class KeyReceiver extends Thread {
     private final static int BACKOFF_TIME = 40;
+    private static boolean[] IS_PRESSED = new boolean[256];
     private ReceivedNoteHandler handler;
     private ArrayList<PianoKey> receivedKeys = new ArrayList<>();
     private boolean working = true, blocked = false;
@@ -21,20 +22,31 @@ public class KeyReceiver extends Thread {
             if (recKey == key)
                 return;
         }
-        receivedKeys.add(key);
-        notifyAll();
+        if (forPressed) {
+            if (!IS_PRESSED[key.getNote().getTextCode()]) {
+                IS_PRESSED[key.getNote().getTextCode()] = true;
+                receivedKeys.add(key);
+                notifyAll();
+            }
+        }
+        else {
+            IS_PRESSED[key.getNote().getTextCode()] = false;
+            receivedKeys.add(key);
+            notifyAll();
+        }
     }
 
-    public synchronized void stopWorking() { interrupt(); }
+    public synchronized void stopWorking() { working = false; interrupt(); }
 
     public synchronized void blockReceiver() { blocked = true; }
     public synchronized void unblockReceiver() { blocked = false; notifyAll();}
 
     public void run() {
-        while(interrupted()) {
+        while(!interrupted()) {
             try {
+
                 synchronized (this) { while(receivedKeys.size() == 0) wait(); }
-                synchronized (this) { while(blocked) wait(); }
+                synchronized (this) { while(blocked && working) wait(); }
                 sleep(BACKOFF_TIME);
                 ArrayList<PianoKey> tmpKeys = receivedKeys;
                 receivedKeys = new ArrayList<>();
@@ -47,6 +59,7 @@ public class KeyReceiver extends Thread {
             }
             catch(InterruptedException ie) {interrupt();}
         }
+        System.out.println("Receiver rip");
     }
 
 

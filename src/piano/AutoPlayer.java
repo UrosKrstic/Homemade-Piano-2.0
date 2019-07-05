@@ -1,14 +1,15 @@
 package piano;
 
-import javax.sound.midi.MidiChannel;
 import java.util.ArrayList;
 
 public class AutoPlayer extends Thread {
-    private static final int EIGHT_NOTE_PLAYTIME = 130;
+    private static final int EIGHT_NOTE_PLAYTIME = 120;
     private CompositionViewer compViewer;
     private boolean working = false;
     private Main mainProgram;
     private ReceivedNoteHandler handler;
+    private boolean isRecording;
+    private ArrayList<MusicSymbol> recordedSymbols = new ArrayList<>();
 
     public AutoPlayer(CompositionViewer _compViewer, ReceivedNoteHandler _handler, Main _mainProgram) {
         compViewer = _compViewer;
@@ -22,10 +23,21 @@ public class AutoPlayer extends Thread {
         notifyAll();
     }
 
+    public synchronized void setRecording(boolean b) { isRecording = b; }
+    public synchronized boolean isRecording() { return isRecording; }
+
+    public synchronized void pausePlaying() {
+        working = false;
+    }
+
     public synchronized void stopPlaying() {
         working = false;
         compViewer.resetViewer();
         compViewer.drawComp();
+        if (isRecording) {
+            handler.setRecordingSymbols(recordedSymbols);
+            handler.fileWindow();
+        }
     }
 
     public synchronized void stopWorking() {
@@ -49,6 +61,7 @@ public class AutoPlayer extends Thread {
                 }
                 if (!compViewer.reachedEnd()) {
                     MusicSymbol symbol = compViewer.getCurrentSymbol();
+                    if (isRecording) recordedSymbols.add(symbol);
                     if (symbol instanceof Pause) {
                        sleep(symbol);
                     }
@@ -73,12 +86,12 @@ public class AutoPlayer extends Thread {
                     compViewer.drawComp();
                 }
                 else {
-                    stopPlaying();
-                    mainProgram.stopAutoPlaying();
+                    mainProgram.stopAction();
 
                 }
             }
             catch (InterruptedException ie) {break;}
         }
+        System.out.println("Auto-player rip");
     }
 }

@@ -2,6 +2,7 @@ package piano;
 
 import exceptions.FileException;
 import javafx.application.Application;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -9,8 +10,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import javax.sound.midi.MidiUnavailableException;
@@ -37,6 +40,42 @@ public class Main extends Application {
     private boolean isAutoPlaying = false;
     private MenuItem record = new MenuItem("Record"), play = new MenuItem("Play");
     private MenuItem pause = new MenuItem("Pause"), stop = new MenuItem("Stop");
+    private Button recordButton = new Button("Record"), playButton = new Button("Play");
+    private Button pauseButton = new Button("Pause"), stopButton = new Button("Stop");
+
+    private void openSettings() {
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL); // BLOCKS OTHER WINDOWS USERS EVENTS
+        stage.setTitle("Settings");
+        stage.setWidth(400);
+        stage.setHeight(350);
+        Label settings = new Label("Settings");
+        settings.setStyle("-fx-font-size: 26");
+        Label filler = new Label();
+        Label filler2 = new Label();
+        CheckBox tags = new CheckBox("Piano key tags");
+        CheckBox pitchDisplayed = new CheckBox("Note pitch displayed");
+        CheckBox recordWhileAutoPlaying = new CheckBox("Record while auto-playing");
+        tags.setSelected(piano.isHelperON());
+        pitchDisplayed.setSelected(compViewer.isPitchShown());
+        recordWhileAutoPlaying.setSelected(autoPlayer.isRecording());
+        Button apply = new Button("Apply");
+        apply.setOnAction(ae -> {
+            piano.setHelper(tags.isSelected());
+            compViewer.showPitch(pitchDisplayed.isSelected());
+            autoPlayer.setRecording(recordWhileAutoPlaying.isSelected());
+            stage.close();
+        });
+
+        VBox layout = new VBox(10);
+        layout.setAlignment(Pos.CENTER);
+        layout.getChildren().addAll(settings, filler, tags, pitchDisplayed, recordWhileAutoPlaying, filler2, apply);
+
+
+        Scene scene = new Scene(layout, 400, 350);
+        stage.setScene(scene);
+        stage.showAndWait();
+    }
 
     private void shutdownProgram() {
         handler.stopWorking();
@@ -80,6 +119,67 @@ public class Main extends Application {
         stop.setDisable(true);
     }
 
+    private void recordAction() {
+        record.setDisable(true);
+        pause.setDisable(false);
+        stop.setDisable(false);
+        play.setDisable(true);
+        recordButton.setDisable(true);
+        pauseButton.setDisable(false);
+        stopButton.setDisable(false);
+        playButton.setDisable(true);
+        handler.startRecording();
+    }
+
+    private void playAction() {
+        if (compViewer.hasComposition()) {
+            blockInput();
+            record.setDisable(true);
+            play.setDisable(false);
+            pause.setDisable(false);
+            stop.setDisable(false);
+            recordButton.setDisable(true);
+            pauseButton.setDisable(false);
+            playButton.setDisable(false);
+            stopButton.setDisable(false);
+            isAutoPlaying = true;
+            autoPlayer.startPlaying();
+        }
+        else {
+            AlertBox.display("Error", "No composition loaded");
+        }
+    }
+
+    private void pauseAction() {
+        if (isAutoPlaying) {
+            autoPlayer.pausePlaying();
+        }
+        else {
+            handler.pauseRecording();
+        }
+        pause.setDisable(true);
+        pauseButton.setDisable(true);
+    }
+
+    public void stopAction() {
+        if (isAutoPlaying) {
+            autoPlayer.stopPlaying();
+            isAutoPlaying = false;
+            unblockInput();
+        }
+        else {
+            handler.stopRecording();
+        }
+        record.setDisable(false);
+        play.setDisable(false);
+        pause.setDisable(true);
+        stop.setDisable(true);
+        recordButton.setDisable(false);
+        playButton.setDisable(false);
+        pauseButton.setDisable(true);
+        stopButton.setDisable(true);
+    }
+
     @Override
     public void start(Stage primaryStage) throws Exception{
         try {
@@ -90,33 +190,35 @@ public class Main extends Application {
             window.setResizable(false);
             loadingScene.setOnKeyPressed(ke -> {
                 if (ke.getCode() == KeyCode.ENTER && loadingThread.finished()) {
-                    window.setScene(mainScene);
-                    mainScene.setOnKeyPressed(e -> piano.keyPressed(e));
-                    mainScene.setOnKeyReleased(e -> piano.keyReleased(e));
-                    mainScene.setOnMousePressed(me -> piano.mousePressed(me));
-                    mainScene.setOnMouseReleased(me -> piano.mouseReleased(me));
-                    window.show();
-                    window.setOnCloseRequest(e -> {
-                        e.consume();
-                        questioningShutdown();
-                    });
+                    try {
+                        mainScene = initializeMainScene();
+                        window.setScene(mainScene);
+                        mainScene.setOnKeyPressed(e -> piano.keyPressed(e));
+                        mainScene.setOnKeyReleased(e -> piano.keyReleased(e));
+                        mainScene.setOnMousePressed(me -> piano.mousePressed(me));
+                        mainScene.setOnMouseReleased(me -> piano.mouseReleased(me));
+                        window.show();
+                        window.setOnCloseRequest(e -> {
+                            e.consume();
+                            questioningShutdown();
+                        });
+                    }
+                    catch (MidiUnavailableException ie) {
+                        AlertBox.display("Fatal error", "Midi Unavailable - Fatal Error");
+                        shutdownProgram();
+                    }
                 }
             });
             window.setScene(loadingScene);
             window.show();
             loadingThread.start();
             map.start();
-            mainScene = initializeMainScene();
             if (map.errorOccurred())
                 throw new FileException("Incorrect format for input map file");
         } catch(FileException fe) {
             AlertBox.display("Fatal error", fe.getMessage());
             shutdownProgram();
-        } catch (MidiUnavailableException ie) {
-            AlertBox.display("Fatal error", "Midi Unavailable - Fatal Error");
-            shutdownProgram();
         }
-
     }
 
     private void initializeLoadingScene() throws FileException {
@@ -151,14 +253,16 @@ public class Main extends Application {
     }
 
     private void initializeMenuBar() {
-        Menu fileMenu = new Menu("File");
+        Menu fileMenu = new Menu("_File");
         MenuItem openFile = new MenuItem("Open File...");
         openFile.setOnAction(e -> {
             File selectedFile = fileChooser.showOpenDialog(window);
-            Composition comp = new Composition(map);
+            Composition comp = null;
             try {
-                if (selectedFile != null)
+                if (selectedFile != null) {
+                    comp = new Composition(map);
                     comp.loadFromFile(selectedFile.toString());
+                }
                 //comp.exportToTXT("src/piano/out.txt");
                 //comp.exportToMIDI("src/piano/outmidi.mid");
             } catch (IOException fe) {
@@ -177,55 +281,27 @@ public class Main extends Application {
         fileMenu.getItems().add(new SeparatorMenuItem());
         fileMenu.getItems().add(exitProgram);
 
-        Menu editMenu = new Menu("Edit");
-        record.setOnAction(e -> {
-            record.setDisable(true);
-            pause.setDisable(false);
-            stop.setDisable(false);
-            play.setDisable(true);
-            handler.startRecording();
-        });
-        play.setOnAction(e -> {
-            blockInput();
-            record.setDisable(true);
-            play.setDisable(false);
-            pause.setDisable(false);
-            stop.setDisable(false);
-            isAutoPlaying = true;
-            autoPlayer.startPlaying();
-        });
-
+        Menu editMenu = new Menu("_Edit");
+        record.setOnAction(e -> recordAction());
+        recordButton.setOnAction(e -> recordAction());
+        play.setOnAction(e -> playAction());
+        playButton.setOnAction(e -> playAction());
         pause.setDisable(true);
-        pause.setOnAction(e -> {
-            if (isAutoPlaying) {
-                autoPlayer.stopPlaying();
-            }
-            else {
-                handler.pauseRecording();
-            }
-        });
-
+        pause.setOnAction(e -> pauseAction());
+        pauseButton.setDisable(true);
+        pauseButton.setOnAction(e -> pauseAction());
         stop.setDisable(true);
-        stop.setOnAction(e -> {
-            if (isAutoPlaying) {
-                autoPlayer.stopPlaying();
-                isAutoPlaying = false;
-                unblockInput();
-            }
-            else {
-                handler.stopRecording();
-            }
-            record.setDisable(false);
-            play.setDisable(false);
-            pause.setDisable(true);
-            stop.setDisable(true);
-        });
+        stop.setOnAction(e -> stopAction());
+        stopButton.setDisable(true);
+        stopButton.setOnAction(e -> stopAction());
         editMenu.getItems().addAll(record, play, pause, stop);
 
-        Menu settingsMenu = new Menu("Settings");
-        Menu helpMenu = new Menu("Help");
+        Menu settingsMenu = new Menu("_Settings");
+        MenuItem open = new MenuItem("Open");
+        open.setOnAction(ae -> openSettings());
+        settingsMenu.getItems().add(open);
 
-        menuBar.getMenus().addAll(fileMenu, editMenu, settingsMenu, helpMenu);
+        menuBar.getMenus().addAll(fileMenu, editMenu, settingsMenu);
     }
 
     private Scene initializeMainScene() throws MidiUnavailableException {
@@ -251,8 +327,12 @@ public class Main extends Application {
         autoPlayer = new AutoPlayer(compViewer, handler, this);
         center.getChildren().addAll(compViewer, piano);
         mainPane.setCenter(center);
-        mainPane.setBottom(new Button("Hello m8"));
-
+        FlowPane bottom = new FlowPane();
+        bottom.setAlignment(Pos.CENTER);
+        bottom.setHgap(20);
+        bottom.getChildren().addAll(recordButton, playButton, pauseButton, stopButton);
+        mainPane.setBottom(bottom);
+        
         return new Scene(mainPane, SCREEENWIDTH, SCREENHEIGHT);
     }
 
