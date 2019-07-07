@@ -1,10 +1,9 @@
 package piano;
 
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class KeyReceiver extends Thread {
-    private final static int BACKOFF_TIME = 40;
+    private final static int BACKOFF_TIME = 50;
     private static boolean[] IS_PRESSED = new boolean[256];
     private ReceivedNoteHandler handler;
     private ArrayList<PianoKey> receivedKeys = new ArrayList<>();
@@ -18,10 +17,6 @@ public class KeyReceiver extends Thread {
     }
 
     public synchronized void addKey(PianoKey key) {
-        for (PianoKey recKey : receivedKeys) {
-            if (recKey == key)
-                return;
-        }
         if (forPressed) {
             if (!IS_PRESSED[key.getNote().getTextCode()]) {
                 IS_PRESSED[key.getNote().getTextCode()] = true;
@@ -46,7 +41,12 @@ public class KeyReceiver extends Thread {
             try {
 
                 synchronized (this) { while(receivedKeys.size() == 0) wait(); }
-                synchronized (this) { while(blocked && working) wait(); }
+                synchronized (this) {
+                    if (blocked) {
+                        while (blocked && working) wait();
+                        receivedKeys.clear();
+                    }
+                }
                 sleep(BACKOFF_TIME);
                 ArrayList<PianoKey> tmpKeys = receivedKeys;
                 receivedKeys = new ArrayList<>();

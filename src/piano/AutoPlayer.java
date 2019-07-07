@@ -1,5 +1,7 @@
 package piano;
 
+import javafx.application.Platform;
+
 import java.util.ArrayList;
 
 public class AutoPlayer extends Thread {
@@ -45,12 +47,7 @@ public class AutoPlayer extends Thread {
     }
 
     private void sleep(MusicSymbol symbol) throws InterruptedException {
-        if (symbol.getDuration() == 1) {
-            sleep(EIGHT_NOTE_PLAYTIME);
-        }
-        else {
-            sleep(EIGHT_NOTE_PLAYTIME * 2);
-        }
+        sleep(EIGHT_NOTE_PLAYTIME * symbol.getDuration());
     }
 
     public void run() {
@@ -86,8 +83,8 @@ public class AutoPlayer extends Thread {
                     compViewer.drawComp();
                 }
                 else {
-                    mainProgram.stopAction();
-
+                    working = false;
+                    Platform.runLater(() -> mainProgram.stopAction());
                 }
             }
             catch (InterruptedException ie) {break;}

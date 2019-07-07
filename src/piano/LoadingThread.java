@@ -1,6 +1,5 @@
 package piano;
 
-import exceptions.FileException;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 

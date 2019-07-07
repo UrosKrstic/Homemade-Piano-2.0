@@ -101,13 +101,13 @@ public class Piano extends Pane {
 
     public void sendMousePressKey(MouseEvent me, KeyReceiver receiver) {
         for (PianoKey key : blackKeys) {
-            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 25)) {
+            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 28)) {
                 receiver.addKey(key);
                 return;
             }
         }
         for (PianoKey key : whiteKeys) {
-            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 25)) {
+            if (key.getKeyRect().contains(me.getX() - x, me.getY() - y - 28)) {
                 receiver.addKey(key);
                 return;
             }

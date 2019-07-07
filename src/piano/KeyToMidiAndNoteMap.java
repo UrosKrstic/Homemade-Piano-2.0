@@ -1,7 +1,5 @@
 package piano;
 
-import exceptions.FileException;
-
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.HashMap;

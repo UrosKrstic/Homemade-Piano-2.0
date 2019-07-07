@@ -1,0 +1,52 @@
+#pane {
+    -fx-background-color: lightskyblue;
+}
+
+.button {
+    -fx-background-color: darkgrey;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+}
+
+
+.check-box {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14;
+}
+
+.choice-box .context-menu {
+    -fx-background-color: lightgrey;
+}
+
+.choice-box .menu-item:focused {
+    -fx-background-color: white;
+}
+
+.choice-box .menu-item > .label {
+    -fx-text-fill: white;
+    -fx-font-size: 14;
+}
+
+.choice-box .menu-item:focused > .label {
+    -fx-text-fill: darkgrey;
+    -fx-font-size: 18;
+}
+
+.choice-box {
+    -fx-background-color: darkgrey;
+    -fx-mark-color: lightgrey;
+}
+
+.choice-box > .label {
+    -fx-text-fill: white;
+    -fx-font-size: 14;
+}
+
+
+.label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 18;
+}

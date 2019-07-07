@@ -1,0 +1,81 @@
+#pane{
+  -fx-background-color: lightskyblue;
+}
+
+.button {
+  -fx-background-color: #222222;
+}
+
+.menu-bar {
+  -fx-background-color: #222222;
+}
+
+#noLoadedComp {
+  -fx-text-fill: lightgrey;
+  -fx-font-size: 22;
+}
+
+#viewCompLabel {
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+  -fx-font-size: 26;
+  -fx-font-family: "Baskerville Old Face";
+  -fx-background-color:  lightskyblue;
+}
+
+#quote {
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+  -fx-font-family: "Courier New";
+  -fx-font-size: 14;
+}
+#author {
+  -fx-text-fill: white;
+  -fx-font-family: "Blackadder ITC";
+  -fx-font-size: 19;
+}
+
+
+.menu .label {
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+  -fx-font-size: 12;
+}
+
+.menu:hover {
+  -fx-background-color: darkgray;
+}
+.menu:hover .label {
+  -fx-text-fill: blue;
+}
+
+.menu:showing {
+  -fx-background-color: darkgray;
+}
+
+.menu:showing .label {
+  -fx-text-fill: blue;
+}
+
+.menu-item .label {
+  -fx-text-fill: white;
+}
+
+.menu-item:focused {
+  -fx-background-color: darkgray;
+  -fx-background-insets: 0, 1, 2;
+  -fx-background-radius: 0 6 6 6, 0 5 5 5, 0 4 4 4;
+  -fx-padding: 0.433333em 0.093333em 0.766667em 0.093333em;
+}
+
+.menu-item:focused .label {
+  -fx-text-fill: blue;
+  -fx-font-size: 13;
+}
+
+.context-menu {
+  -fx-background-color: #222222;
+  -fx-background-insets: 0, 1, 2;
+  -fx-background-radius: 0 6 6 6, 0 5 5 5, 0 4 4 4;
+  -fx-padding: 0.233333em 0.073333em 0.566667em 0.073333em;
+}

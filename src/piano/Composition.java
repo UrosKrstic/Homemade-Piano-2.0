@@ -4,7 +4,6 @@ import com.leff.midi.MidiFile;
 import com.leff.midi.MidiTrack;
 import com.leff.midi.event.meta.Tempo;
 import com.leff.midi.event.meta.TimeSignature;
-import exceptions.FileException;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -175,11 +174,11 @@ public class Composition {
         ts.setTimeSignature(8, 8, TimeSignature.DEFAULT_METER, TimeSignature.DEFAULT_DIVISION);
 
         Tempo tempo = new Tempo();
-        tempo.setBpm(275);
+        tempo.setBpm(340);
         tempoTrack.insertEvent(ts);
         tempoTrack.insertEvent(tempo);
 
-        int channel = 0, velocity = 100, duration = 80;
+        int channel = 0, velocity = 120, duration = 120;
         for (int i = 0; i < symbols.size(); i++) {
             MusicSymbol symbol = symbols.get(i);
             long tick = i * 480;

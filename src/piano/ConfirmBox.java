@@ -13,8 +13,6 @@ public class ConfirmBox {
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL); // BLOCKS OTHER WINDOWS USERS EVENTS
         window.setTitle(title);
-        window.setWidth(300);
-        window.setMinWidth(300);
         Label label = new Label(message);
 
         Button yes = new Button("Yes");
@@ -32,8 +30,14 @@ public class ConfirmBox {
 
         VBox layout = new VBox(10);
         layout.setAlignment(Pos.CENTER);
-        layout.getChildren().addAll(label, yes, no);
-        Scene scene = new Scene(layout);
+        layout.setId("pane");
+        FlowPane flowPane = new FlowPane();
+        flowPane.setAlignment(Pos.CENTER);
+        flowPane.setHgap(15);
+        flowPane.getChildren().addAll(yes, no);
+        layout.getChildren().addAll(label, flowPane);
+        Scene scene = new Scene(layout, 300, 240);
+        scene.getStylesheets().add("piano/alertStyle.css");
         window.setScene(scene);
         window.showAndWait();
 

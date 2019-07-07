@@ -3,6 +3,7 @@ package piano;
 import com.sun.prism.Graphics;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
@@ -13,10 +14,11 @@ public class CompositionViewer extends Pane {
     private final static int NUM_OF_QUARTERS = 15;
     private final static int NUM_OF_EIGHTS = (NUM_OF_QUARTERS - 1) * 2;
     private final static int MAX_NOTES_IN_CHORD = 5;
+    private Label notLoadedLabel = new Label("No composition loaded");
     private Canvas bg, fg;
     private Composition comp;
     private int x, y, width, height, quarterW, bgLineHeight;
-    private int startX = 3, currentSymbolIndex = 0;
+    private int startX = 5, currentSymbolIndex = 0;
     private boolean reachedEnd;
     private boolean pitchShown;
 
@@ -32,8 +34,13 @@ public class CompositionViewer extends Pane {
         setWidth(width);
         setHeight(height);
 
+        int layoutX = 2, layoutY = 2;
         bg = new Canvas(width, height);
         fg = new Canvas(width, height);
+        fg.setLayoutX(layoutX);
+        fg.setLayoutY(layoutY);
+        bg.setLayoutX(layoutX);
+        bg.setLayoutY(layoutY);
         fg.toFront();
         getChildren().addAll(bg, fg);
 
@@ -57,11 +64,17 @@ public class CompositionViewer extends Pane {
         for (int i = startX; i <= width; i += quarterW) {
             gc.strokeLine(i, bgLineHeight, i, height - 3);
         }
+        notLoadedLabel.setLayoutX(0.367346 * width);
+        notLoadedLabel.setLayoutY(0.380282 * height);
+        notLoadedLabel.setId("noLoadedComp");
+
+        getChildren().add(notLoadedLabel);
     }
 
     public void setComposition(Composition _comp) {
         comp = _comp;
-        drawComp();
+        notLoadedLabel.setVisible(false);
+        resetViewer();
     }
 
     public boolean checkCurrentSymbol(MusicSymbol symbol) {
@@ -88,7 +101,7 @@ public class CompositionViewer extends Pane {
 
     public boolean reachedEnd() { return reachedEnd; }
 
-    public void resetViewer() {currentSymbolIndex = 0; reachedEnd = false;}
+    public void resetViewer() {currentSymbolIndex = 0; reachedEnd = false; drawComp();}
 
     public void drawComp() {
         if (comp != null) {

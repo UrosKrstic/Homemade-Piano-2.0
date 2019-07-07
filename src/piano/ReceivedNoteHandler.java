@@ -1,9 +1,7 @@
 package piano;
 
-import exceptions.FileException;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -12,6 +10,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -28,7 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ReceivedNoteHandler extends Thread {
 
-    private static final int EIGHT_NOTE_PLAYTIME = 130;
+    private static final int EIGHT_NOTE_PLAYTIME = 100;
     private static final int DEFAULT_INSTRUMENT = 1;
     private Stage window;
     private MidiChannel channel;
@@ -41,10 +40,12 @@ public class ReceivedNoteHandler extends Thread {
 
     public synchronized void addPressedKey(ArrayList<PianoKey> keys) {
         pressedKeys.offer(keys);
+
         notifyAll();
-        if (playingPause) {
+        /*if (playingPause) {
             interrupt();
-        }
+        }*/
+        interrupt();
     }
 
     public synchronized void addReleasedKey(ArrayList<PianoKey> keys) {
@@ -78,16 +79,18 @@ public class ReceivedNoteHandler extends Thread {
         Stage stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL); // BLOCKS OTHER WINDOWS USERS EVENTS
         stage.setTitle("File Export");
-        stage.setWidth(300);
-        stage.setMinWidth(300);
         stage.setOnCloseRequest(e -> {
             recordingSymbols.clear();
         });
         Label label = new Label("Do you wish to save your recording?");
+        label.setWrapText(true);
+        label.setPrefWidth(250);
+        label.setTextAlignment(TextAlignment.CENTER);
         Button yes = new Button("yes");
         Button no = new Button("no");
         yes.setOnAction(e -> {
             ChoiceBox<String> choiceBox = new ChoiceBox<>();
+            choiceBox.setPrefSize(200, 40);
             choiceBox.getItems().addAll("Export to TXT format", "Export to MIDI format");
             choiceBox.setValue("Export to TXT format");
             Button cont = new Button("Continue");
@@ -121,9 +124,11 @@ public class ReceivedNoteHandler extends Thread {
                 stage.close();
             });
             VBox layout2 = new VBox(30);
-            layout2.getChildren().addAll(choiceBox, cont);
             layout2.setAlignment(Pos.CENTER);
-            Scene contScene = new Scene(layout2, 300, 300);
+            layout2.getChildren().addAll(choiceBox, cont);
+            layout2.setId("pane");
+            Scene contScene = new Scene(layout2, 280, 250);
+            contScene.getStylesheets().add("piano/alertStyle.css");
             stage.setScene(contScene);
         });
         no.setOnAction(e -> {
@@ -132,12 +137,15 @@ public class ReceivedNoteHandler extends Thread {
         });
         FlowPane pane = new FlowPane();
         pane.setAlignment(Pos.CENTER);
+        pane.setHgap(15);
         pane.getChildren().addAll(yes, no);
-        VBox layout = new VBox(10);
+        VBox layout = new VBox(15);
+        layout.setId("pane");
         layout.getChildren().addAll(label, pane);
         layout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(layout, 300, 300);
+        Scene scene = new Scene(layout, 280, 250);
+        scene.getStylesheets().add("piano/alertStyle.css");
         stage.setScene(scene);
         stage.showAndWait();
     }
@@ -157,7 +165,7 @@ public class ReceivedNoteHandler extends Thread {
 
     public void setCompositionViewer(CompositionViewer compViewer) { this.compViewer = compViewer; }
 
-    private void updateStatus(ArrayList<PianoKey> keys, boolean isQuarterNote) {
+    private synchronized void updateStatus(ArrayList<PianoKey> keys, boolean isQuarterNote) {
         if (keys.size() == 1) {
             Note note = keys.get(0).getNote();
             if (isQuarterNote) note.setDuration(2);
@@ -166,6 +174,7 @@ public class ReceivedNoteHandler extends Thread {
             if (isRecording) {
                 recordingSymbols.add(note);
             }
+            //System.out.println(note);
         }
         else {
             ArrayList<Note> notes = new ArrayList<>(keys.size());
@@ -174,6 +183,7 @@ public class ReceivedNoteHandler extends Thread {
                 notes.add(key.getNote());
             }
             Chord chord = new Chord(notes);
+            //System.out.println(chord);
             compViewer.checkCurrentSymbol(chord);
             if (isRecording) {
                 recordingSymbols.add(chord);
@@ -181,7 +191,7 @@ public class ReceivedNoteHandler extends Thread {
         }
     }
 
-    public ArrayList<PianoKey> locatePianoKeys(ArrayList<Note> notes) {
+    public synchronized ArrayList<PianoKey> locatePianoKeys(ArrayList<Note> notes) {
         ArrayList<PianoKey> keys = new ArrayList<>();
         ArrayList<PianoKey> pianoCheckUpKeys = new ArrayList<>();
         pianoCheckUpKeys.addAll(piano.getBlackKeys());
@@ -197,7 +207,7 @@ public class ReceivedNoteHandler extends Thread {
         return keys;
     }
 
-    public void highlightKeys(ArrayList<PianoKey> keys) {
+    public synchronized void highlightKeys(ArrayList<PianoKey> keys) {
         for (PianoKey key : keys) {
             Rectangle rect = key.getKeyRect();
             if (key.getNote().isSharp()) {
@@ -221,7 +231,7 @@ public class ReceivedNoteHandler extends Thread {
         }
     }
 
-    public void unhighlightKeys(ArrayList<PianoKey> keys) {
+    public synchronized void unhighlightKeys(ArrayList<PianoKey> keys) {
         for (PianoKey key : keys) {
             Rectangle rect = key.getKeyRect();
             if (key.getNote().isSharp()) {
@@ -266,6 +276,7 @@ public class ReceivedNoteHandler extends Thread {
                 releasedKeys.clear();
                 continue;
             }
+            releasedKeys.clear();
             ArrayList<PianoKey> keys = pressedKeys.poll();
             playingPause = keys == null || keys.size() == 0;
             if (!playingPause) {
@@ -276,10 +287,15 @@ public class ReceivedNoteHandler extends Thread {
                 sleep(EIGHT_NOTE_PLAYTIME);
             }
             catch (InterruptedException ie) {
-                if (playingPause) continue;
+                if (playingPause)  {
+                    Pause pause = new Pause(1);
+                    //System.out.println(pause);
+                    if (compViewer.checkCurrentSymbol(pause))
+                        continue;
+                }
                 else {
                     ArrayList<PianoKey> released = releasedKeys.peek();
-                    if (released != null) {
+                    if (released != null || (pressedKeys.peek() != null && pressedKeys.peek().size() != 0)) {
                         releasedKeys.poll();
                         updateStatus(keys, false);
                         unhighlightKeys(keys);
@@ -290,20 +306,22 @@ public class ReceivedNoteHandler extends Thread {
 
             if (!playingPause) {
                 ArrayList<PianoKey> released = releasedKeys.peek();
-                isQuarterNote = released == null;
+                isQuarterNote = released == null || released.size() == 0;
             }
             else {
                 Pause pause = new Pause(1);
+               // System.out.println(pause);
                 if (compViewer.checkCurrentSymbol(pause))
                     continue;
             }
             if (isQuarterNote) {
                 try {
-                    sleep(EIGHT_NOTE_PLAYTIME + EIGHT_NOTE_PLAYTIME / 3);
+                    sleep(EIGHT_NOTE_PLAYTIME);
                 }
                 catch (InterruptedException ie) {
                     if (playingPause) {
                         Pause pause = new Pause(1);
+                        //System.out.println(pause);
                         compViewer.checkCurrentSymbol(pause);
                         if (isRecording) {
                             recordingSymbols.add(pause);
@@ -312,7 +330,7 @@ public class ReceivedNoteHandler extends Thread {
                     }
                     else {
                         ArrayList<PianoKey> released = releasedKeys.peek();
-                        if (released != null) {
+                        if (released == null || released.size() == 0) {
                             releasedKeys.poll();
                             updateStatus(keys, true);
                             unhighlightKeys(keys);
@@ -324,6 +342,7 @@ public class ReceivedNoteHandler extends Thread {
             releasedKeys.poll();
             if (playingPause) {
                 Pause pause = new Pause(2);
+                //System.out.println(pause);
                 compViewer.checkCurrentSymbol(pause);
                 if (isRecording) {
                     recordingSymbols.add(pause);

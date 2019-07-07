@@ -1,6 +1,5 @@
 package piano;
 
-import exceptions.FileException;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -12,6 +11,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -25,6 +25,7 @@ import java.io.IOException;
 
 public class Main extends Application {
     private final static int SCREEENWIDTH = 1024, SCREENHEIGHT = 640;
+
     private final static int cap = 60;
     private Stage window;
     private LoadingThread loadingThread;
@@ -40,8 +41,10 @@ public class Main extends Application {
     private boolean isAutoPlaying = false;
     private MenuItem record = new MenuItem("Record"), play = new MenuItem("Play");
     private MenuItem pause = new MenuItem("Pause"), stop = new MenuItem("Stop");
-    private Button recordButton = new Button("Record"), playButton = new Button("Play");
-    private Button pauseButton = new Button("Pause"), stopButton = new Button("Stop");
+    private Button recordButton = new Button(""), playButton = new Button("");
+    private Button pauseButton = new Button(""), stopButton = new Button("");
+    private QuoteGenerator quoteGenerator;
+    private ImageView playImg, recordImg, pauseImg, stopImg;
 
     private void openSettings() {
         Stage stage = new Stage();
@@ -53,8 +56,8 @@ public class Main extends Application {
         settings.setStyle("-fx-font-size: 26");
         Label filler = new Label();
         Label filler2 = new Label();
-        CheckBox tags = new CheckBox("Piano key tags");
-        CheckBox pitchDisplayed = new CheckBox("Note pitch displayed");
+        CheckBox tags = new CheckBox("Key assist");
+        CheckBox pitchDisplayed = new CheckBox("Note pitch display");
         CheckBox recordWhileAutoPlaying = new CheckBox("Record while auto-playing");
         tags.setSelected(piano.isHelperON());
         pitchDisplayed.setSelected(compViewer.isPitchShown());
@@ -68,31 +71,39 @@ public class Main extends Application {
         });
 
         VBox layout = new VBox(10);
+        layout.setId("pane");
         layout.setAlignment(Pos.CENTER);
         layout.getChildren().addAll(settings, filler, tags, pitchDisplayed, recordWhileAutoPlaying, filler2, apply);
 
 
         Scene scene = new Scene(layout, 400, 350);
+        scene.getStylesheets().add("piano/alertStyle.css");
         stage.setScene(scene);
         stage.showAndWait();
     }
 
     private void shutdownProgram() {
-        handler.stopWorking();
+        if (handler != null)
+            handler.stopWorking();
         try {
             ReceivedNoteHandler.closeSynth();
         }
         catch(MidiUnavailableException me) {
             AlertBox.display("Error", "Failed to get synthesizer and close the MIDI subsystem.");
         }
-        pressedReceiver.stopWorking();
-        releasedReceiver.stopWorking();
-        autoPlayer.stopWorking();
+        if (pressedReceiver != null)
+            pressedReceiver.stopWorking();
+        if (releasedReceiver != null)
+            releasedReceiver.stopWorking();
+        if (autoPlayer != null)
+            autoPlayer.stopWorking();
+        if (quoteGenerator != null)
+            quoteGenerator.stopWorking();
         window.close();
     }
 
     private void questioningShutdown() {
-        boolean answer = ConfirmBox.display("Don't leave me :(", "Do you wish to exit?");
+        boolean answer = ConfirmBox.display("Exit", "Do you wish to exit?");
         if (answer) {
             shutdownProgram();
         }
@@ -192,6 +203,7 @@ public class Main extends Application {
                 if (ke.getCode() == KeyCode.ENTER && loadingThread.finished()) {
                     try {
                         mainScene = initializeMainScene();
+                        mainScene.getStylesheets().add("piano/mainStyle.css");
                         window.setScene(mainScene);
                         mainScene.setOnKeyPressed(e -> piano.keyPressed(e));
                         mainScene.setOnKeyReleased(e -> piano.keyReleased(e));
@@ -207,6 +219,11 @@ public class Main extends Application {
                         AlertBox.display("Fatal error", "Midi Unavailable - Fatal Error");
                         shutdownProgram();
                     }
+                    catch(FileException fe) {
+                            AlertBox.display("Fatal error", fe.getMessage());
+                            shutdownProgram();
+                    }
+
                 }
             });
             window.setScene(loadingScene);
@@ -233,7 +250,7 @@ public class Main extends Application {
         ImageView imageView = new ImageView(image);
         ProgressBar ind = new ProgressBar(0);
         Label enterTextLabel = new Label("PRESS ENTER TO CONTINUE");
-        enterTextLabel.setStyle("-fx-background-color: #FFFFFF");
+        enterTextLabel.setStyle("-fx-background-color: white");
         enterTextLabel.setStyle("-fx-font-size: 24");
         enterTextLabel.setLayoutX(361);
         enterTextLabel.setLayoutY(432);
@@ -294,7 +311,9 @@ public class Main extends Application {
         stop.setOnAction(e -> stopAction());
         stopButton.setDisable(true);
         stopButton.setOnAction(e -> stopAction());
-        editMenu.getItems().addAll(record, play, pause, stop);
+        MenuItem resetViewer = new MenuItem("Reset viewer");
+        resetViewer.setOnAction(ae -> compViewer.resetViewer());
+        editMenu.getItems().addAll(record, play, pause, stop, new SeparatorMenuItem(), resetViewer);
 
         Menu settingsMenu = new Menu("_Settings");
         MenuItem open = new MenuItem("Open");
@@ -304,35 +323,106 @@ public class Main extends Application {
         menuBar.getMenus().addAll(fileMenu, editMenu, settingsMenu);
     }
 
-    private Scene initializeMainScene() throws MidiUnavailableException {
+    private Scene initializeMainScene() throws MidiUnavailableException, FileException {
         BorderPane mainPane = new BorderPane();
-
+        mainPane.setId("pane");
         fileChooser.setTitle("Open File");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text file", "*.txt"));
         initializeMenuBar();
         mainPane.setTop(menuBar);
+        int pianoX = 81, pianoY = 290, pianoW = 882, pianoH = 211;
+        Image image, img1, img2, img3, img4;
+        try {
+            image = new Image(new FileInputStream("src/piano/pianoBG_7.png"));
+            img1 = new Image(new FileInputStream("src/piano/recordBttn.png"));
+            img2 = new Image(new FileInputStream("src/piano/playBttn.png"));
+            img3 = new Image(new FileInputStream("src/piano/pauseBttn.png"));
+            img4 = new Image(new FileInputStream("src/piano/stopBttn.png"));
+        } catch (FileNotFoundException e) {
+            throw new FileException("Resources failed to load.");
+        }
+        ImageView imgView = new ImageView(image);
+        // 43 195 954 370
+        imgView.setLayoutX(0.530864 * pianoX);
+        imgView.setLayoutY(0.672413 * pianoY);
+        imgView.setFitWidth(1.081633 * pianoW);
+        imgView.setFitHeight(1.753554 * pianoH);
 
         AnchorPane center = new AnchorPane();
-        compViewer = new CompositionViewer(81, 36, 882, 142);
-        piano = new Piano(map, 81, 223,  882, 211);
+
+        FlowPane upperCenter = new FlowPane();
+        upperCenter.setAlignment(Pos.CENTER);
+        upperCenter.setHgap(10);
+        recordImg = new ImageView(img1);
+        playImg = new ImageView(img2);
+        pauseImg = new ImageView(img3);
+        stopImg = new ImageView(img4);
+        int width = 50, height = 40;
+        recordImg.setFitWidth(width);
+        recordImg.setFitHeight(height);
+        playImg.setFitWidth(width);
+        playImg.setFitHeight(height);
+        pauseImg.setFitWidth(width);
+        pauseImg.setFitHeight(height);
+        stopImg.setFitWidth(width);
+        stopImg.setFitHeight(height);
+        recordButton.setGraphic(recordImg);
+        playButton.setGraphic(playImg);
+        pauseButton.setGraphic(pauseImg);
+        stopButton.setGraphic(stopImg);
+        upperCenter.getChildren().addAll(recordButton, playButton, pauseButton, stopButton);
+        //318 234
+        upperCenter.setLayoutX(3.876543 * pianoX);
+        upperCenter.setLayoutY(0.806896 * pianoY);
+
+        int compViewYoffset = 0;
+        compViewer = new CompositionViewer(81, 36 + compViewYoffset, 882, 142);
+        compViewer.setStyle("-fx-border-width: 5");
+        compViewer.setStyle("-fx-border-color: #000000");
+        piano = new Piano(map, pianoX, pianoY,  pianoW, pianoH);
         handler = new ReceivedNoteHandler(piano);
         handler.setCompositionViewer(compViewer);
         handler.setWindow(window);
         pressedReceiver = new KeyReceiver(handler, true);
         releasedReceiver = new KeyReceiver(handler, false);
+
         piano.setHandler(handler);
         piano.setPressedReceiver(pressedReceiver);
         piano.setReleasedReceiver(releasedReceiver);
+
         autoPlayer = new AutoPlayer(compViewer, handler, this);
-        center.getChildren().addAll(compViewer, piano);
+
+        Label compViewerLabel = new Label("Composition Viewer");
+        compViewerLabel.setId("viewCompLabel");
+        compViewerLabel.setLayoutX(410);
+        compViewerLabel.setLayoutY(compViewYoffset);
+
+        AnchorPane bottom = new AnchorPane();
+        Label quoteLabel = new Label("");
+        quoteLabel.setLayoutX(320);
+        quoteLabel.setLayoutY(10);
+        quoteLabel.setWrapText(true);
+        quoteLabel.setMaxWidth(400);
+        quoteLabel.setMaxHeight(76);
+        quoteLabel.setId("quote");
+        quoteLabel.setTextAlignment(TextAlignment.CENTER);
+        Label authorLabel = new Label("");
+        authorLabel.setLayoutX(680);
+        authorLabel.setLayoutY(59);
+        authorLabel.setMaxWidth(200);
+        authorLabel.setMaxHeight(17);
+        authorLabel.setId("author");
+        //516
+        bottom.setLayoutY(1.77931 * pianoY);
+        bottom.getChildren().addAll(quoteLabel, authorLabel);
+        quoteGenerator = new QuoteGenerator(quoteLabel, authorLabel);
+
+        center.getChildren().addAll(compViewerLabel, imgView, compViewer, piano, upperCenter, bottom);
         mainPane.setCenter(center);
-        FlowPane bottom = new FlowPane();
-        bottom.setAlignment(Pos.CENTER);
-        bottom.setHgap(20);
-        bottom.getChildren().addAll(recordButton, playButton, pauseButton, stopButton);
-        mainPane.setBottom(bottom);
-        
+
+
+
         return new Scene(mainPane, SCREEENWIDTH, SCREENHEIGHT);
     }
 
