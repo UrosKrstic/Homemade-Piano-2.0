@@ -193,7 +193,7 @@ public class Composition {
                 }
             }
         }
-        //inivisible ghost note that does the job xd rofl kek lmfao kms
+        //invisible ghost note that does the job xd rofl kek lmfao kms
         noteTrack.insertNote(channel, 1, velocity, 480 * symbols.size(), duration);
         List<MidiTrack> tracks = new ArrayList<>();
         tracks.add(tempoTrack);
